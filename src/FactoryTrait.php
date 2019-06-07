@@ -169,6 +169,7 @@ trait FactoryTrait
         return $object;
     }
 
+
     /**
      * First normalize class name, then add specified prefix to
      * class name. Finally if $app is defined, and has method
@@ -197,39 +198,79 @@ trait FactoryTrait
      */
     public function normalizeClassName($name, $prefix = null)
     {
-        // If App has "normalizeClassName" (obsolete now), use it instead
-        if (
-            isset($this->_appScopeTrait, $this->app)
-            && method_exists($this->app, 'normalizeClassNameApp')
-        ) {
-            $result = $this->app->normalizeClassNameApp($name, $prefix);
+        $NormalizeClassNameAppAvailable = isset($this->_appScopeTrait, $this->app) && method_exists($this->app, 'normalizeClassNameApp');
 
-            if (!is_null($result)) {
+        if(!$name && $NormalizeClassNameAppAvailable) {
+            $result = $this->app->normalizeClassNameApp($name);
+            if($result !== '')
+            {
                 return $result;
             }
         }
 
-        // Rule 1: if "\" is present, don't prefix
-        if (strpos($name, '\'') !== false) {
-            return $name;
+        /**
+         * use ascii chr in place of string to avoid errors
+         */
+        $NS_SEPA_REVERSE = chr(47);
+        $NS_SEPA_CHAR    = chr(92);
+
+        // normalize name
+        $name_1st_chr = $name[0] ?? '';
+        $name_2nd_chr = $name[1] ?? '';
+        $name_1st_chr_is_sepa = $name_1st_chr === $NS_SEPA_CHAR || $name_1st_chr === $NS_SEPA_REVERSE;
+        $name_contains_sepa = strpos($name,$NS_SEPA_CHAR) !== false;
+        $name_isDot = $name_1st_chr.$name_2nd_chr === '.'.$NS_SEPA_REVERSE;
+
+        $name = str_replace($NS_SEPA_REVERSE, $NS_SEPA_CHAR, $name);
+        $name = trim($name,'.');
+        $name = trim($name,$NS_SEPA_CHAR);
+
+        // normalize prefix
+        $prefix_1st_chr = $prefix[0] ?? '';
+        $prefix_1st_chr_is_sepa = $prefix_1st_chr === $NS_SEPA_CHAR || $prefix_1st_chr === $NS_SEPA_REVERSE;
+
+        $prefix = str_replace($NS_SEPA_REVERSE, $NS_SEPA_CHAR, $prefix);
+
+        $fqcn = $name;
+
+        // add again SEPARATOR if it was present
+        if($name_1st_chr_is_sepa || $name_isDot || $name_contains_sepa )
+        {
+            if($name_isDot || $name_1st_chr_is_sepa) {
+                return $NS_SEPA_CHAR.$name;
+            }
+
+            return $fqcn;
         }
 
-        // Rule 2: if starts with "." always prefix
-        if ($name[0] == '.' && $prefix) {
-            $name = $prefix.'\\'.$name;
+        if($name_contains_sepa )
+        {
+            $fqcn = $name;
+            return $fqcn;
         }
 
-        if (
-            $name[0] != '/'
-            && $name[0] != '\\'
-            && isset($this->_appScopeTrait, $this->app)
-            && method_exists($this->app, 'normalizeClassNameApp')
-        ) {
-            $name = $this->app->normalizeClassNameApp($name);
+        if($prefix)
+        {
+            $name = trim($fqcn,$NS_SEPA_CHAR);
+            $fqcn = $prefix.$NS_SEPA_CHAR.$fqcn;
         }
 
-        $name = str_replace('/', '\\', $name);
+        if(class_exists($fqcn))
+        {
+            return $fqcn;
+        }
 
-        return $name;
+        $fqcn_1st_chr = $fqcn[0] ?? '';
+        if ($NormalizeClassNameAppAvailable && $fqcn_1st_chr != $NS_SEPA_CHAR) {
+            $fqcn = $this->app->normalizeClassNameApp($fqcn);
+        }
+
+        if(class_exists(__NAMESPACE__. $NS_SEPA_CHAR . $fqcn))
+        {
+            return __NAMESPACE__. $NS_SEPA_CHAR . $fqcn;
+        }
+
+
+        return $fqcn;
     }
 }

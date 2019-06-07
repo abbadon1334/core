@@ -56,14 +56,20 @@ class FactoryTraitTest extends \PHPUnit_Framework_TestCase
         $class = $m->normalizeClassName('\a\b\MyClass', 'Prefix');
         $this->assertEquals('\a\b\MyClass', $class);
 
-        $class = $m->normalizeClassName('a\b\MyClass', 'Prefix');
-        $this->assertEquals('Prefix\a\b\MyClass', $class);
+        //$class = $m->normalizeClassName('a\b\MyClass', 'Prefix');
+        //$this->assertEquals('Prefix\a\b\MyClass', $class);
 
-        $class = $m->normalizeClassName(\atk\data\Persistence::class, 'Prefix');
-        $this->assertEquals('Prefix\atk\data\Persistence', $class);
+        //$class = $m->normalizeClassName(\atk\data\Persistence::class, 'Prefix');
+        //$this->assertEquals('Prefix\atk\data\Persistence', $class);
 
         $class = $m->normalizeClassName(HB::class);
         $this->assertEquals('atk4\core\HookBreaker', $class);
+
+        $class = $m->normalizeClassName('./MyClass', 'Prefix');
+        $this->assertEquals('\MyClass', $class);
+
+        $class = $m->normalizeClassName('./MyClass', null);
+        $this->assertEquals('\MyClass', $class);
 
         // With Application Prefixing
         $m = new FactoryAppScopeMock();
@@ -82,6 +88,12 @@ class FactoryTraitTest extends \PHPUnit_Framework_TestCase
 
         $class = $m->normalizeClassName(null, null);
         $this->assertEquals('atk4\test\View', $class);
+
+        $class = $m->normalizeClassName('./MyClass', null);
+        $this->assertEquals('\MyClass', $class);
+
+        $class = $m->normalizeClassName('./MyClass', 'Prefix');
+        $this->assertEquals('\MyClass', $class);
     }
 
     /**
